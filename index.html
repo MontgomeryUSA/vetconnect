@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Chat</title>
+  <style>
+    body { 
+      font-family: Arial; 
+      background: #eee; 
+      padding: 20px; 
+    }
+    #chat-box {
+      height: 400px;
+      overflow-y: scroll;
+      background: white;
+      padding: 10px;
+      border: 1px solid #ccc;
+    }
+    #msg {
+      width: 80%;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Chat Test</h2>
+
+<div id="chat-box"></div>
+
+<br>
+
+<input id="name" placeholder="Your name">
+<br><br>
+<input id="msg" placeholder="Write a message...">
+<button onclick="sendMsg()">Send</button>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+  // CONNECT TO YOUR TUNNEL
+  const socket = io("https://chat.monty.my");
+
+  const chatBox = document.getElementById("chat-box");
+
+  function addMessage(m) {
+    const div = document.createElement("div");
+    div.textContent = `${m.sender}: ${m.content}`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  // Load old messages
+  fetch("https://chat.monty.my/messages")
+    .then(res => res.json())
+    .then(data => data.forEach(addMessage));
+
+  // New messages
+  socket.on("new_message", msg => {
+    addMessage(msg);
+  });
+
+  function sendMsg() {
+    const sender = document.getElementById("name").value;
+    const content = document.getElementById("msg").value;
+
+    if (!sender || !content) return;
+
+    socket.emit("send_message", { sender, content });
+    document.getElementById("msg").value = "";
+  }
+</script>
+
+</body>
+</html>
