@@ -1,123 +1,401 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <title>Chat With Login</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VetConnect — Private Chat</title>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    #chat-ui { display: none; }
-    #chat-box { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: 10px; }
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --self: #ecfdf5;
+      --other: #fff7ed;
+    }
+    body { margin:0; font-family: Inter, system-ui, Arial; background:var(--bg); color:#0f172a; }
+    .app { max-width:1100px; margin:28px auto; display:grid; grid-template-columns:280px 1fr; gap:20px; padding:20px; }
+    .card { background:var(--panel); border-radius:12px; padding:12px; box-shadow:0 6px 18px rgba(12,18,30,0.06); }
+    .logo { font-weight:700; color:var(--accent); margin-bottom:8px; }
+    /* Left column */
+    .left { display:flex; flex-direction:column; height:80vh; }
+    .auth { margin-bottom:12px; }
+    .auth input, .compose input { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #e6eef7; }
+    .btn { background:var(--accent); color:white; border:none; padding:10px 12px; border-radius:8px; cursor:pointer; }
+    .btn.ghost { background:transparent; color:var(--accent); border:1px solid #dbeafe; }
+    .small { font-size:13px; color:var(--muted); margin-top:6px; }
+    .users-list { overflow:auto; margin-top:8px; }
+    .user-row { padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+    .user-row:hover { background:#f1f5f9; }
+    .user-name { font-weight:600; }
+    .user-sub { font-size:12px; color:var(--muted); }
+    /* Right column (chat) */
+    .chat { display:flex; flex-direction:column; height:80vh; }
+    .chat-header { display:flex; align-items:center; justify-content:space-between; padding:12px; border-bottom:1px solid #eef2f7; }
+    .chat-body { flex:1; padding:16px; overflow:auto; background:linear-gradient(180deg,#fbfdff, #fff); }
+    .message { max-width:70%; padding:10px 12px; margin:8px 0; border-radius:10px; line-height:1.35; }
+    .msg-self { margin-left:auto; background:var(--self); border:1px solid #dcfce7; }
+    .msg-other { margin-right:auto; background:var(--other); border:1px solid #ffedd5; }
+    .meta { font-size:12px; color:var(--muted); margin-top:6px; }
+    .composer { display:flex; gap:8px; padding:12px; border-top:1px solid #eef2f7; align-items:center; }
+    .composer input { flex:1; padding:10px; border-radius:10px; border:1px solid #e6eef7; }
+    .muted-note { font-size:13px; color:var(--muted); margin-top:8px; }
+    @media (max-width: 880px) {
+      .app { grid-template-columns:1fr; }
+      .left { order:2; }
+      .chat { order:1; height:auto; min-height:60vh; }
+    }
   </style>
 </head>
 <body>
 
-<h2>VetConnect Chat</h2>
+<div class="app">
+  <!-- LEFT -->
+  <div class="left card">
+    <div class="logo">VetConnect</div>
 
-<div id="auth-ui">
-  <input id="username" placeholder="Username"><br><br>
-  <input id="password" placeholder="Password" type="password"><br><br>
+    <div id="signed-out-ui" class="auth">
+      <input id="username" placeholder="username" />
+      <input id="password" placeholder="password" type="password" />
+      <div style="display:flex; gap:8px;">
+        <button class="btn" onclick="signup()">Sign Up</button>
+        <button class="btn ghost" onclick="signin()">Sign In</button>
+      </div>
+      <div class="small">Accounts are simple for now (username + password). Passwords are sent as-is — please add hashing on server for production.</div>
+    </div>
 
-  <button onclick="signup()">Sign Up</button>
-  <button onclick="signin()">Sign In</button>
+    <div id="signed-in-ui" style="display:none;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div id="me-display" style="font-weight:700;"></div>
+          <div class="small" id="me-id"></div>
+        </div>
+        <div>
+          <button class="btn ghost" onclick="logout()">Sign out</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div style="display:flex; gap:6px;">
+          <input id="new-contact-username" placeholder="Add contact by username (optional)" />
+          <button class="btn" onclick="addContactByUsername()">Add</button>
+        </div>
+        <div class="small">If your backend exposes `/users` this list will be auto-populated. Otherwise add a contact by username (server must support user lookup) or use numeric ID below.</div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="small">Or start by entering numeric user id:</div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <input id="manual-id" placeholder="user id (e.g. 2)" />
+          <button class="btn" onclick="openById()">Open</button>
+        </div>
+      </div>
+
+      <h4 style="margin-top:14px;">Contacts</h4>
+      <div class="users-list" id="contacts"></div>
+    </div>
+
+    <div style="margin-top:12px;" class="muted-note">
+      Frontend served from <strong>vetconnect.monty.my</strong>. Backend API is <strong id="api-host"></strong>
+    </div>
+  </div>
+
+  <!-- RIGHT (CHAT) -->
+  <div class="card chat">
+    <div class="chat-header">
+      <div>
+        <div style="font-weight:700" id="chat-with">Select a contact to start</div>
+        <div class="small" id="chat-with-id"></div>
+      </div>
+      <div class="small" id="status">Not connected</div>
+    </div>
+
+    <div id="chat-body" class="chat-body">
+      <div class="small muted-note">No conversation selected.</div>
+    </div>
+
+    <div class="composer" id="composer" style="display:none;">
+      <input id="message-input" placeholder="Write a message..." onkeydown="if(event.key==='Enter') sendMessage()" />
+      <button class="btn" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
 </div>
 
-<div id="chat-ui">
-  <button onclick="logout()">Sign Out</button>
-
-  <h3>Chat</h3>
-  <div id="chat-box"></div>
-
-  <input id="msg" placeholder="Message...">
-  <button onclick="sendMsg()">Send</button>
-</div>
-
+<!-- Socket.IO CDN -->
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
-const API_URL = "https://chat.monty.my";
-const socket = io(API_URL);
+/* ========== CONFIG ========== */
+/* Change this to point to your backend (Cloudflare Tunnel domain) */
+const API_BASE = "https://chat.monty.my"; // <- change if different
+document.getElementById('api-host').textContent = API_BASE;
 
-let user_id = localStorage.getItem("user_id");
+/* ========== STATE ========== */
+let socket = null;
+let me = null; // { user_id, username }
+let currentChat = null; // { id: numeric id of other user, username? }
+const contacts = {}; // map id -> { id, username }
 
-if (user_id) {
-  showChat();
-} 
+/* ========== BOOTSTRAP ========== */
+(function init() {
+  const saved = localStorage.getItem("vc_user");
+  if (saved) {
+    me = JSON.parse(saved);
+    showSignedInUI();
+    connectSocket();
+    tryLoadContacts();
+  } else {
+    showSignedOutUI();
+  }
+})();
 
-function signup() {
-  fetch(`${API_URL}/signup`, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      username: document.getElementById("username").value,
-      password: document.getElementById("password").value
-    })
-  })
-  .then(r => r.json())
-  .then(res => {
-    if (!res.success) return alert("Username already exists");
-    localStorage.setItem("user_id", res.user_id);
-    showChat();
-  });
+/* ========== UI helpers ========== */
+function showSignedInUI() {
+  document.getElementById('signed-out-ui').style.display = 'none';
+  document.getElementById('signed-in-ui').style.display = 'block';
+  document.getElementById('me-display').textContent = me.username;
+  document.getElementById('me-id').textContent = `id: ${me.user_id}`;
+  document.getElementById('status').textContent = 'Connected (socket will show status)';
+}
+function showSignedOutUI() {
+  document.getElementById('signed-out-ui').style.display = 'block';
+  document.getElementById('signed-in-ui').style.display = 'none';
+  document.getElementById('status').textContent = 'Not connected';
 }
 
-function signin() {
-  fetch(`${API_URL}/signin`, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      username: document.getElementById("username").value,
-      password: document.getElementById("password").value
-    })
-  })
-  .then(r => r.json())
-  .then(res => {
-    if (!res.success) return alert("Invalid credentials");
-    localStorage.setItem("user_id", res.user_id);
-    showChat();
+/* ========== AUTH ========== */
+async function signup() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  if (!username || !password) return alert("Enter username and password");
+  const res = await fetch(`${API_BASE}/signup`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ username, password })
   });
+  const j = await res.json();
+  if (!j.success) return alert(j.message || 'Signup failed');
+  me = { user_id: j.user_id, username };
+  localStorage.setItem('vc_user', JSON.stringify(me));
+  showSignedInUI();
+  connectSocket();
+  tryLoadContacts();
+}
+
+async function signin() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  if (!username || !password) return alert("Enter username and password");
+  const res = await fetch(`${API_BASE}/signin`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ username, password })
+  });
+  const j = await res.json();
+  if (!j.success) return alert(j.message || 'Signin failed');
+  me = { user_id: j.user_id, username: j.username };
+  localStorage.setItem('vc_user', JSON.stringify(me));
+  showSignedInUI();
+  connectSocket();
+  tryLoadContacts();
 }
 
 function logout() {
-  localStorage.removeItem("user_id");
-  location.reload();
+  localStorage.removeItem('vc_user');
+  me = null;
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+  showSignedOutUI();
+  // reset UI
+  document.getElementById('chat-body').innerHTML = '<div class="small muted-note">No conversation selected.</div>';
+  document.getElementById('composer').style.display = 'none';
 }
 
-function showChat() {
-  document.getElementById("auth-ui").style.display = "none";
-  document.getElementById("chat-ui").style.display = "block";
+/* ========== SOCKET.IO ========== */
+function connectSocket() {
+  if (!me) return;
+  if (socket) socket.disconnect();
 
-  loadMessages();
-}
-
-function loadMessages() {
-  fetch(`${API_URL}/messages`)
-    .then(r => r.json())
-    .then(messages => {
-      const box = document.getElementById("chat-box");
-      box.innerHTML = "";
-      messages.forEach(m => {
-        const d = document.createElement("div");
-        d.textContent = `${m.username}: ${m.content}`;
-        box.appendChild(d);
-      });
-      box.scrollTop = box.scrollHeight;
-    });
-}
-
-socket.on("new_message", m => {
-  const box = document.getElementById("chat-box");
-  const d = document.createElement("div");
-  d.textContent = `User ${m.user_id}: ${m.content}`;
-  box.appendChild(d);
-  box.scrollTop = box.scrollHeight;
-});
-
-function sendMsg() {
-  socket.emit("send_message", {
-    user_id: localStorage.getItem("user_id"),
-    content: document.getElementById("msg").value
+  socket = io(API_BASE, {
+    transports: ['websocket', 'polling'],
+    withCredentials: false
   });
-  document.getElementById("msg").value = "";
-}
-</script>
 
+  socket.on('connect', () => {
+    document.getElementById('status').textContent = 'Socket connected';
+    // register our user so server can put us in user_{id} room
+    socket.emit('register_user', me.user_id);
+  });
+
+  socket.on('disconnect', () => {
+    document.getElementById('status').textContent = 'Socket disconnected';
+  });
+
+  socket.on('new_message', (msg) => {
+    // msg: { id, sender_id, receiver_id, content, timestamp }
+    // If it's part of current chat, render; otherwise show a preview in contacts
+    const otherId = (msg.sender_id == me.user_id) ? msg.receiver_id : msg.sender_id;
+    // update contacts cache if we have username present (server currently doesn't send username)
+    if (!contacts[otherId]) {
+      contacts[otherId] = { id: otherId, username: `user #${otherId}` };
+      renderContacts();
+    }
+    // If currently viewing this contact, append
+    if (currentChat && parseInt(currentChat.id) === parseInt(otherId)) {
+      appendMessageToChat(msg);
+    } else {
+      // Badging / preview: place at top of contacts and show snippet
+      const row = document.getElementById(`contact-${otherId}`);
+      if (row) {
+        row.querySelector('.user-sub').textContent = msg.content.slice(0, 40);
+      }
+    }
+  });
+}
+
+/* ========== CONTACTS MANAGEMENT ========== */
+async function tryLoadContacts() {
+  // If your backend exposes an endpoint to list users (e.g. GET /users), we can load it.
+  // If not available, contacts can be added manually via username or numeric id.
+  try {
+    const res = await fetch(`${API_BASE}/users`);
+    if (!res.ok) throw new Error("No users endpoint");
+    const list = await res.json();
+    list.forEach(u => contacts[u.id] = { id: u.id, username: u.username });
+    renderContacts();
+  } catch (e) {
+    // No /users endpoint — keep existing contacts map (manual add)
+    renderContacts();
+  }
+}
+
+function renderContacts() {
+  const wrap = document.getElementById('contacts');
+  wrap.innerHTML = '';
+  const arr = Object.values(contacts).sort((a,b)=>a.id - b.id);
+  if (arr.length === 0) {
+    wrap.innerHTML = '<div class="small muted-note">No contacts yet. Add by username or numeric id.</div>';
+    return;
+  }
+  arr.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'user-row';
+    div.id = `contact-${c.id}`;
+    div.innerHTML = `<div>
+                      <div class="user-name">${escapeHtml(c.username || `user #${c.id}`)}</div>
+                      <div class="user-sub">${c.preview || ''}</div>
+                     </div>
+                     <div style="display:flex; gap:8px;">
+                       <button class="btn ghost" onclick="openChat(${c.id}, '${escapeJsString(c.username||'')}')">Open</button>
+                     </div>`;
+    wrap.appendChild(div);
+  });
+}
+
+async function addContactByUsername() {
+  // Try to look user up by username (requires backend support: GET /user/:username)
+  const uname = document.getElementById('new-contact-username').value.trim();
+  if (!uname) return;
+  try {
+    const res = await fetch(`${API_BASE}/user/${encodeURIComponent(uname)}`);
+    if (!res.ok) throw new Error('User not found');
+    const u = await res.json();
+    contacts[u.id] = { id: u.id, username: u.username };
+    renderContacts();
+    document.getElementById('new-contact-username').value = '';
+  } catch (e) {
+    alert('Lookup failed. If your backend does not implement GET /user/:username, add by numeric id instead.');
+  }
+}
+
+function openById() {
+  const id = document.getElementById('manual-id').value.trim();
+  if (!id) return alert('Enter numeric user id');
+  openChat(parseInt(id), `user #${id}`);
+}
+
+/* ========== CHAT FUNCTIONS ========== */
+async function openChat(otherId, otherUsername) {
+  if (!me) return alert('Sign in first');
+  currentChat = { id: otherId, username: otherUsername || `user #${otherId}` };
+  document.getElementById('chat-with').textContent = currentChat.username || `user #${otherId}`;
+  document.getElementById('chat-with-id').textContent = `id: ${otherId}`;
+  document.getElementById('composer').style.display = 'flex';
+  document.getElementById('chat-body').innerHTML = '<div class="small muted-note">Loading...</div>';
+
+  // Optional: store contact in contacts map
+  contacts[otherId] = contacts[otherId] || { id: otherId, username: otherUsername || `user #${otherId}` };
+  renderContacts();
+
+  // fetch chat history:
+  const resp = await fetch(`${API_BASE}/messages/${me.user_id}/${otherId}`);
+  const messages = await resp.json();
+  renderConversation(messages);
+}
+
+function renderConversation(messages) {
+  const body = document.getElementById('chat-body');
+  body.innerHTML = '';
+  if (!messages || messages.length === 0) {
+    body.innerHTML = '<div class="small muted-note">No messages yet. Say hi!</div>';
+    return;
+  }
+  messages.forEach(m => appendMessageToChat(m, false));
+  body.scrollTop = body.scrollHeight;
+}
+
+function appendMessageToChat(m, scroll = true) {
+  const body = document.getElementById('chat-body');
+  const div = document.createElement('div');
+  div.className = 'message ' + ((parseInt(m.sender_id) === parseInt(me.user_id)) ? 'msg-self' : 'msg-other');
+  const who = (parseInt(m.sender_id) === parseInt(me.user_id)) ? 'You' : (contacts[m.sender_id]?.username || `user ${m.sender_id}`);
+  div.innerHTML = `<div style="font-weight:600">${escapeHtml(who)}</div>
+                   <div style="margin-top:6px;">${escapeHtml(m.content)}</div>
+                   <div class="meta">${new Date(m.timestamp).toLocaleString()}</div>`;
+  body.appendChild(div);
+  if (scroll) body.scrollTop = body.scrollHeight;
+}
+
+/* ========== SENDING ========== */
+function sendMessage() {
+  if (!me || !currentChat) return alert('Select a contact and sign in first');
+  const input = document.getElementById('message-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const payload = {
+    sender_id: me.user_id,
+    receiver_id: currentChat.id,
+    content: text
+  };
+  // Emit via socket (server persists)
+  if (!socket || !socket.connected) {
+    alert('Socket not connected. Try refreshing or sign out/in.');
+    return;
+  }
+  socket.emit('send_message', payload);
+  input.value = '';
+  // Optimistically append (server will also send it back)
+  appendMessageToChat({
+    id: 'local-' + Date.now(),
+    sender_id: me.user_id,
+    receiver_id: currentChat.id,
+    content: text,
+    timestamp: new Date().toISOString()
+  });
+}
+
+/* ========== UTILITIES ========== */
+function escapeHtml(s='') { return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function escapeJsString(s='') { return s.replace(/'/g,"\\'").replace(/"/g,'\\"'); }
+
+/* ========== OPTIONAL: Try to expose /users by default ======== */
+/* Note: Your backend currently does not implement GET /users or GET /user/:username by default.
+   If you want the automatic contact list to work, add:
+     GET /users -> returns [{id, username}, ...]
+     GET /user/:username -> returns {id, username} or 404
+   Both are trivial to add on the server (I can give code if you want).
+*/
+</script>
 </body>
 </html>
