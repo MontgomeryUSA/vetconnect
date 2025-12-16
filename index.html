@@ -1,324 +1,558 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>VetConnect — Private Chat</title>
-  <style>
-    :root {
-      --bg: #f4f6f8;
-      --panel: #ffffff;
-      --muted: #6b7280;
-      --accent: #2563eb;
-      --self: #ecfdf5;
-      --other: #fff7ed;
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VetConnect — Chats</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary: '#1f3d2b',
+        accent:  '#3a7f5a',
+        bg:      '#f6f1e9',
+        card:    '#ffffff',
+        ink:     '#102018'
+      },
+      boxShadow: {
+        soft: '0 14px 35px rgba(0,0,0,0.10)',
+        soft2:'0 10px 22px rgba(0,0,0,0.08)'
+      }
     }
-    body { margin:0; font-family: Inter, system-ui, Arial; background:var(--bg); color:#0f172a; }
-    .app { max-width:1100px; margin:28px auto; display:grid; grid-template-columns:280px 1fr; gap:20px; padding:20px; }
-    .card { background:var(--panel); border-radius:12px; padding:12px; box-shadow:0 6px 18px rgba(12,18,30,0.06); }
-    .logo { font-weight:700; color:var(--accent); margin-bottom:8px; }
-    .left { display:flex; flex-direction:column; height:80vh; }
-    .auth { margin-bottom:12px; }
-    .auth input, .compose input { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #e6eef7; }
-    .btn { background:var(--accent); color:white; border:none; padding:10px 12px; border-radius:8px; cursor:pointer; }
-    .btn.ghost { background:transparent; color:var(--accent); border:1px solid #dbeafe; }
-    .small { font-size:13px; color:var(--muted); margin-top:6px; }
-    .users-list { overflow:auto; margin-top:8px; }
-    .user-row { padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
-    .user-row:hover { background:#f1f5f9; }
-    .user-name { font-weight:600; }
-    .user-sub { font-size:12px; color:var(--muted); }
-    .chat { display:flex; flex-direction:column; height:80vh; }
-    .chat-header { display:flex; align-items:center; justify-content:space-between; padding:12px; border-bottom:1px solid #eef2f7; }
-    .chat-body { flex:1; padding:16px; overflow:auto; background:linear-gradient(180deg,#fbfdff, #fff); }
-    .message { max-width:70%; padding:10px 12px; margin:8px 0; border-radius:10px; line-height:1.35; }
-    .msg-self { margin-left:auto; background:var(--self); border:1px solid #dcfce7; }
-    .msg-other { margin-right:auto; background:var(--other); border:1px solid #ffedd5; }
-    .meta { font-size:12px; color:var(--muted); margin-top:6px; }
-    .composer { display:flex; gap:8px; padding:12px; border-top:1px solid #eef2f7; align-items:center; }
-    .composer input { flex:1; padding:10px; border-radius:10px; border:1px solid #e6eef7; }
-    .muted-note { font-size:13px; color:var(--muted); margin-top:8px; }
-    @media (max-width: 880px) {
-      .app { grid-template-columns:1fr; }
-      .left { order:2; }
-      .chat { order:1; height:auto; min-height:60vh; }
-    }
-  </style>
+  }
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  html,body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .fade-in{animation:fade .55s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .shimmer{background:linear-gradient(90deg,rgba(255,255,255,.25),rgba(255,255,255,.45),rgba(255,255,255,.25));
+           background-size:200% 100%; animation:shimmer 1.6s infinite}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:50;align-items:center;justify-content:center}
+  .modal.active{display:flex}
+</style>
+
 </head>
-<body>
+<body class="bg-bg text-ink">
 
-<div class="app">
-  <div class="left card">
-    <div class="logo">VetConnect</div>
-
-    <div id="signed-out-ui" class="auth">
-      <input id="username" placeholder="username" />
-      <input id="password" placeholder="password" type="password" />
-      <div style="display:flex; gap:8px;">
-        <button class="btn" onclick="signup()">Sign Up</button>
-        <button class="btn ghost" onclick="signin()">Sign In</button>
-      </div>
-      <div class="small">Accounts are simple for now. Passwords are sent as-is.</div>
+<!-- Auth Modal -->
+<div id="authModal" class="modal active">
+  <div class="bg-white rounded-3xl shadow-soft p-6 md:p-8 max-w-md w-full mx-4">
+    <div class="flex items-center gap-2 mb-4">
+      <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none">
+        <path d="M4 5.5L12 3l8 2.5v6.2c0 4.1-2.6 7.8-8 9.3-5.4-1.5-8-5.2-8-9.3V5.5z" fill="currentColor"/>
+      </svg>
+      <h2 class="text-2xl font-bold text-primary">VetConnect</h2>
+    </div>
+    
+    <div id="authTabs" class="flex gap-2 mb-4">
+      <button onclick="switchAuthTab('signin')" id="signinTab" class="flex-1 px-4 py-2 rounded-xl bg-primary text-white font-semibold">Sign In</button>
+      <button onclick="switchAuthTab('signup')" id="signupTab" class="flex-1 px-4 py-2 rounded-xl bg-white border border-black/10 font-semibold">Sign Up</button>
     </div>
 
-    <div id="signed-in-ui" style="display:none;">
-      <div style="display:flex; align-items:center; justify-content:space-between;">
-        <div>
-          <div id="me-display" style="font-weight:700;"></div>
-          <div class="small" id="me-id"></div>
-        </div>
-        <div>
-          <button class="btn ghost" onclick="logout()">Sign out</button>
-        </div>
+    <form id="authForm" onsubmit="handleAuth(event)">
+      <input type="text" id="authUsername" placeholder="Username" required
+             class="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm mb-3"/>
+      <input type="password" id="authPassword" placeholder="Password" required
+             class="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm mb-3"/>
+      <div id="signupFields" class="hidden">
+        <input type="text" id="authFullName" placeholder="Full Name (optional)"
+               class="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm mb-3"/>
+        <input type="text" id="authBranch" placeholder="Branch (e.g., Army, Navy)"
+               class="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm mb-3"/>
       </div>
+      <button type="submit" class="w-full px-4 py-3 rounded-xl bg-accent text-white font-semibold hover:bg-primary">
+        <span id="authButtonText">Sign In</span>
+      </button>
+      <p id="authError" class="text-red-600 text-sm mt-2 hidden"></p>
+    </form>
 
-      <div style="margin-top:12px;">
-        <div style="display:flex; gap:6px;">
-          <input id="new-contact-username" placeholder="Add contact by username" />
-          <button class="btn" onclick="addContactByUsername()">Add</button>
-        </div>
-        <div class="small">Add a contact by username or numeric ID below.</div>
-      </div>
-
-      <div style="margin-top:12px;">
-        <div class="small">Or start by entering numeric user id:</div>
-        <div style="display:flex; gap:8px; margin-top:8px;">
-          <input id="manual-id" placeholder="user id (e.g. 2)" />
-          <button class="btn" onclick="openById()">Open</button>
-        </div>
-      </div>
-
-      <h4 style="margin-top:14px;">Contacts</h4>
-      <div class="users-list" id="contacts"></div>
-    </div>
-
-    <div style="margin-top:12px;" class="muted-note">
-      Frontend served from <strong>vetconnect.monty.my</strong>. Backend API is <strong id="api-host"></strong>
-    </div>
-  </div>
-
-  <div class="card chat">
-    <div class="chat-header">
-      <div>
-        <div style="font-weight:700" id="chat-with">Select a contact to start</div>
-        <div class="small" id="chat-with-id"></div>
-      </div>
-      <div class="small" id="status">Not connected</div>
-    </div>
-
-    <div id="chat-body" class="chat-body">
-      <div class="small muted-note">No conversation selected.</div>
-    </div>
-
-    <div class="composer" id="composer" style="display:none;">
-      <input id="message-input" placeholder="Write a message..." onkeydown="if(event.key==='Enter') sendMessage()" />
-      <button class="btn" onclick="sendMessage()">Send</button>
+    <div class="mt-4 rounded-2xl bg-primary/10 p-4 text-sm">
+      <p class="font-semibold text-primary">Crisis Support</p>
+      <p class="text-xs text-gray-700 mt-1">If you're in crisis, call <span class="font-semibold">988</span> (press 1) for immediate help.</p>
     </div>
   </div>
 </div>
 
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<header class="md:hidden sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-black/5">
+  <div class="px-4 py-3 flex items-center justify-between">
+    <button onclick="toggleDrawer()" class="p-2 rounded-xl border border-black/10 bg-white shadow-soft2">
+      <svg class="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none">
+        <path d="M4 5.5L12 3l8 2.5v6.2c0 4.1-2.6 7.8-8 9.3-5.4-1.5-8-5.2-8-9.3V5.5z" fill="currentColor"/>
+      </svg>
+      <span class="font-semibold">VetConnect</span>
+    </div>
+    <button onclick="logout()" class="p-2 rounded-xl border border-black/10 bg-white shadow-soft2">
+      <span class="text-xs">Logout</span>
+    </button>
+  </div>
+
+  <div id="drawer" class="hidden px-4 pb-4">
+    <div class="rounded-2xl border border-black/10 bg-white shadow-soft2 p-3 space-y-2 text-sm">
+      <a href="index.html" class="block rounded-xl px-3 py-2 border bg-emerald-50 border-emerald-100">💬 Chats</a>
+      <a href="community.html" class="block rounded-xl px-3 py-2 border hover:bg-gray-50">👥 Community</a>
+      <a href="profile.html" class="block rounded-xl px-3 py-2 border hover:bg-gray-50">👤 Profile</a>
+      <a target="_blank" href="https://988lifeline.org/" class="block rounded-xl px-3 py-2 bg-primary text-white border-primary">☎️ Crisis: 988 (press 1)</a>
+    </div>
+  </div>
+</header>
+
+<div class="min-h-screen flex">
+
+<aside class="hidden md:flex w-72 bg-primary text-white flex-col p-5 gap-5">
+  <div class="flex items-center gap-2">
+    <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none">
+      <path d="M4 5.5L12 3l8 2.5v6.2c0 4.1-2.6 7.8-8 9.3-5.4-1.5-8-5.2-8-9.3V5.5z" fill="currentColor"/>
+    </svg>
+    <div>
+      <p class="font-semibold text-lg leading-tight">VetConnect</p>
+      <p class="text-[11px] text-emerald-100" id="currentUserDisplay">Peer support • community</p>
+    </div>
+  </div>
+  <nav class="space-y-2">
+    <a href="index.html" class="block bg-white/10 rounded-xl px-3 py-2.5 text-sm">💬 Chats</a>
+    <a href="community.html" class="block hover:bg-white/10 rounded-xl px-3 py-2.5 text-sm">👥 Community</a>
+    <a href="profile.html" class="block hover:bg-white/10 rounded-xl px-3 py-2.5 text-sm">👤 Profile</a>
+  </nav>
+  
+  <button onclick="logout()" class="w-full px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold">
+    Logout
+  </button>
+
+  <div class="mt-auto rounded-2xl bg-white/10 p-4 text-[11px] leading-relaxed">
+    <p class="font-semibold text-xs">Need immediate help?</p>
+    <p class="mt-1 text-emerald-50/90">
+      If you're in crisis, call <span class="font-semibold">988</span> (then press 1).
+    </p>
+    <a class="mt-3 block rounded-xl bg-emerald-300 text-primary text-center py-2 font-semibold"
+       target="_blank" href="https://988lifeline.org/">
+      Visit 988 Website
+    </a>
+  </div>
+</aside>
+
+<main class="flex-1 px-4 md:px-8 py-6 md:py-10 fade-in pb-24 md:pb-10">
+  <div class="max-w-6xl mx-auto">
+    
+<div class="flex items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl md:text-3xl font-bold text-primary">Chats</h1>
+    <p class="text-sm text-gray-700">Connect with peers for support</p>
+  </div>
+  <div class="hidden md:flex gap-2">
+    <button onclick="showNewChatModal()" class="px-4 py-2 rounded-xl bg-white border border-black/10 shadow-soft2 text-sm font-semibold hover:bg-gray-50">New chat</button>
+    <a class="px-4 py-2 rounded-xl bg-primary text-white shadow-soft2 text-sm font-semibold hover:bg-accent" target="_blank" href="https://988lifeline.org/">988 resources</a>
+  </div>
+</div>
+
+<div class="mt-5 grid gap-4 lg:grid-cols-3">
+  <section class="bg-white border border-black/5 shadow-soft rounded-3xl p-4">
+    <div class="flex items-center justify-between">
+      <h2 class="font-semibold text-primary">Contacts</h2>
+      <button onclick="showNewChatModal()" class="text-xs px-2 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-800 font-semibold">+ New</button>
+    </div>
+    <input id="contactSearch" class="mt-3 w-full px-3 py-2 rounded-xl border border-gray-200 text-sm" placeholder="Search contacts…" oninput="filterContacts()"/>
+    <div id="contactsList" class="mt-4 space-y-2 max-h-96 overflow-y-auto">
+      <p class="text-sm text-gray-500 text-center py-4">Loading contacts...</p>
+    </div>
+  </section>
+
+  <section class="bg-white border border-black/5 shadow-soft rounded-3xl flex flex-col overflow-hidden lg:col-span-2">
+    <div id="chatHeader" class="px-4 py-3 border-b border-black/5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div id="chatAvatar" class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold">?</div>
+        <div>
+          <p id="chatName" class="font-semibold text-gray-400">Select a contact</p>
+          <p class="text-[11px] text-gray-500" id="chatStatus">—</p>
+        </div>
+      </div>
+      <span class="hidden sm:inline text-[11px] px-2 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-800 font-semibold">Peer support</span>
+    </div>
+
+    <div id="messagesContainer" class="flex-1 p-4 space-y-3 overflow-y-auto min-h-[300px] max-h-[500px]">
+      <p class="text-center text-gray-400 text-sm py-8">Select a contact to start chatting</p>
+    </div>
+
+    <div class="p-4 border-t border-black/5 flex items-center gap-2">
+      <input id="messageInput" class="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm" placeholder="Type a message…" disabled/>
+      <button id="sendButton" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-accent" onclick="sendMessage()" disabled>Send</button>
+    </div>
+  </section>
+</div>
+
+<section class="mt-4 bg-white border border-black/5 shadow-soft rounded-3xl p-5">
+  <div class="flex items-center justify-between gap-2">
+    <div class="flex items-center gap-2">
+      <div class="h-9 w-9 rounded-2xl bg-emerald-100 text-emerald-900 flex items-center justify-center">🤖</div>
+      <div>
+        <p class="font-semibold text-primary">VetConnect Assistant</p>
+        <p class="text-[11px] text-gray-500">Prototype helper — not a therapist.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="assistantMsgs" class="mt-4 space-y-3 max-h-[300px] overflow-y-auto pr-1">
+    <div class="bg-gray-100 rounded-2xl px-3 py-2 text-sm">
+      <p class="text-[11px] font-semibold text-gray-700">Assistant</p>
+      <p class="mt-1">Hey — I'm here. Tell me what you need (or just say "hi").</p>
+    </div>
+  </div>
+
+  <div class="mt-4 flex gap-2">
+    <input id="assistantInput" class="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm" placeholder="Ask the assistant…"
+           onkeydown="if(event.key==='Enter'){sendToAssistant();}"/>
+    <button class="px-4 py-2 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-primary" onclick="sendToAssistant()">Send</button>
+  </div>
+</section>
+
+  </div>
+</main>
+</div>
+
+<!-- New Chat Modal -->
+<div id="newChatModal" class="modal">
+  <div class="bg-white rounded-3xl shadow-soft p-6 max-w-md w-full mx-4">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-xl font-bold text-primary">Start New Chat</h3>
+      <button onclick="closeNewChatModal()" class="p-2 hover:bg-gray-100 rounded-xl">✕</button>
+    </div>
+    <input id="newChatSearch" class="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm mb-3" placeholder="Search users…" oninput="searchAllUsers()"/>
+    <div id="allUsersList" class="space-y-2 max-h-64 overflow-y-auto">
+      <p class="text-sm text-gray-500 text-center py-4">Loading users...</p>
+    </div>
+  </div>
+</div>
+
+<nav class="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur border-t border-black/10">
+  <div class="grid grid-cols-3 px-2 py-2 text-[11px]">
+    <button onclick="showNewChatModal()" class="flex flex-col items-center gap-1 py-1 rounded-xl text-gray-600">➕<span>New</span></button>
+    <a href="index.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-accent font-semibold">💬<span>Chats</span></a>
+    <button onclick="logout()" class="flex flex-col items-center gap-1 py-1 rounded-xl text-gray-600">🚪<span>Logout</span></button>
+  </div>
+</nav>
+
 <script>
-const API_BASE = "https://chat.monty.my";
-document.getElementById('api-host').textContent = API_BASE;
+const API_URL = 'https://chat.monty.my';
+let socket;
+let currentUser = null;
+let activeChat = null;
+let allUsers = [];
+let authMode = 'signin';
 
-let socket = null;
-let me = null;
-let currentChat = null;
-const contacts = {};
-
-(function init() {
-  const saved = localStorage.getItem("vc_user");
-  if (saved) {
-    me = JSON.parse(saved);
-    showSignedInUI();
-    connectSocket();
-    tryLoadContacts();
-  } else showSignedOutUI();
-})();
-
-function showSignedInUI() {
-  document.getElementById('signed-out-ui').style.display = 'none';
-  document.getElementById('signed-in-ui').style.display = 'block';
-  document.getElementById('me-display').textContent = me.username;
-  document.getElementById('me-id').textContent = `id: ${me.user_id}`;
-  document.getElementById('status').textContent = 'Connected';
+function switchAuthTab(mode) {
+  authMode = mode;
+  document.getElementById('authButtonText').textContent = mode === 'signin' ? 'Sign In' : 'Sign Up';
+  document.getElementById('signinTab').className = mode === 'signin' 
+    ? 'flex-1 px-4 py-2 rounded-xl bg-primary text-white font-semibold'
+    : 'flex-1 px-4 py-2 rounded-xl bg-white border border-black/10 font-semibold';
+  document.getElementById('signupTab').className = mode === 'signup'
+    ? 'flex-1 px-4 py-2 rounded-xl bg-primary text-white font-semibold'
+    : 'flex-1 px-4 py-2 rounded-xl bg-white border border-black/10 font-semibold';
+  document.getElementById('signupFields').classList.toggle('hidden', mode === 'signin');
+  document.getElementById('authError').classList.add('hidden');
 }
 
-function showSignedOutUI() {
-  document.getElementById('signed-out-ui').style.display = 'block';
-  document.getElementById('signed-in-ui').style.display = 'none';
-  document.getElementById('status').textContent = 'Not connected';
-}
-
-async function signup() {
-  const username = document.getElementById('username').value.trim();
-  const password = document.getElementById('password').value;
-  if (!username || !password) return alert("Enter username and password");
-  const res = await fetch(`${API_BASE}/signup`, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ username, password })
-  });
-  const j = await res.json();
-  if (!j.success) return alert(j.message || 'Signup failed');
-  me = { user_id: j.user_id, username };
-  localStorage.setItem('vc_user', JSON.stringify(me));
-  showSignedInUI();
-  connectSocket();
-  tryLoadContacts();
-}
-
-async function signin() {
-  const username = document.getElementById('username').value.trim();
-  const password = document.getElementById('password').value;
-  if (!username || !password) return alert("Enter username and password");
-  const res = await fetch(`${API_BASE}/signin`, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ username, password })
-  });
-  const j = await res.json();
-  if (!j.success) return alert(j.message || 'Signin failed');
-  me = { user_id: j.user_id, username: j.username };
-  localStorage.setItem('vc_user', JSON.stringify(me));
-  showSignedInUI();
-  connectSocket();
-  tryLoadContacts();
+async function handleAuth(e) {
+  e.preventDefault();
+  const username = document.getElementById('authUsername').value;
+  const password = document.getElementById('authPassword').value;
+  const full_name = document.getElementById('authFullName').value;
+  const branch = document.getElementById('authBranch').value;
+  
+  try {
+    const res = await fetch(`${API_URL}/${authMode}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password, full_name, branch})
+    });
+    const data = await res.json();
+    
+    if(data.success) {
+      currentUser = {id: data.user_id, username: data.username};
+      localStorage.setItem('vetconnect_user', JSON.stringify(currentUser));
+      document.getElementById('authModal').classList.remove('active');
+      initApp();
+    } else {
+      document.getElementById('authError').textContent = data.message;
+      document.getElementById('authError').classList.remove('hidden');
+    }
+  } catch(err) {
+    document.getElementById('authError').textContent = 'Connection error. Is your API running?';
+    document.getElementById('authError').classList.remove('hidden');
+  }
 }
 
 function logout() {
-  localStorage.removeItem('vc_user');
-  me = null;
-  if (socket) { socket.disconnect(); socket = null; }
-  showSignedOutUI();
-  document.getElementById('chat-body').innerHTML = '<div class="small muted-note">No conversation selected.</div>';
-  document.getElementById('composer').style.display = 'none';
+  localStorage.removeItem('vetconnect_user');
+  if(socket) socket.disconnect();
+  location.reload();
 }
 
-function connectSocket() {
-  if (!me) return;
-  if (socket) socket.disconnect();
-
-  socket = io(API_BASE, { transports: ['websocket', 'polling'], withCredentials: false });
-
+function initApp() {
+  document.getElementById('currentUserDisplay').textContent = `Logged in as ${currentUser.username}`;
+  
+  socket = io(API_URL);
   socket.on('connect', () => {
-    document.getElementById('status').textContent = 'Socket connected';
-    socket.emit('register_user', me.user_id);
+    socket.emit('register_user', currentUser.id);
+    loadContacts();
+    loadAllUsers();
   });
-
-  socket.on('disconnect', () => {
-    document.getElementById('status').textContent = 'Socket disconnected';
-  });
-
+  
   socket.on('new_message', (msg) => {
-    const otherId = (msg.sender_id == me.user_id) ? msg.receiver_id : msg.sender_id;
-    if (!contacts[otherId]) contacts[otherId] = { id: otherId, username: `user #${otherId}` };
-    if (currentChat && parseInt(currentChat.id) === parseInt(otherId)) appendMessageToChat(msg);
-    else {
-      const row = document.getElementById(`contact-${otherId}`);
-      if (row) row.querySelector('.user-sub').textContent = msg.content.slice(0, 40);
+    if(activeChat && (msg.sender_id === activeChat.id || msg.receiver_id === activeChat.id)) {
+      displayMessage(msg);
+    }
+    if(msg.sender_id !== currentUser.id) {
+      updateContactPreview(msg.sender_id, msg.content);
     }
   });
 }
 
-async function tryLoadContacts() {
+async function loadContacts() {
   try {
-    const res = await fetch(`${API_BASE}/users`);
-    if (!res.ok) throw new Error("No users endpoint");
-    const list = await res.json();
-    list.forEach(u => contacts[u.id] = { id: u.id, username: u.username });
-    renderContacts();
-  } catch (e) { renderContacts(); }
+    const res = await fetch(`${API_URL}/users`);
+    allUsers = await res.json();
+    renderContacts(allUsers.filter(u => u.id !== currentUser.id));
+  } catch(err) {
+    console.error('Error loading contacts:', err);
+  }
 }
 
-function renderContacts() {
-  const wrap = document.getElementById('contacts');
-  wrap.innerHTML = '';
-  const arr = Object.values(contacts).sort((a,b)=>a.id - b.id);
-  if (arr.length === 0) { wrap.innerHTML = '<div class="small muted-note">No contacts yet. Add by username or numeric id.</div>'; return; }
-  arr.forEach(c => {
-    const div = document.createElement('div');
-    div.className = 'user-row';
-    div.id = `contact-${c.id}`;
-    div.innerHTML = `<div>
-                      <div class="user-name">${escapeHtml(c.username || `user #${c.id}`)}</div>
-                      <div class="user-sub">${c.preview || ''}</div>
-                     </div>
-                     <div style="display:flex; gap:8px;">
-                       <button class="btn ghost" onclick="openChat(${c.id}, '${escapeJsString(c.username||'')}')">Open</button>
-                     </div>`;
-    wrap.appendChild(div);
-  });
+function renderContacts(users) {
+  const list = document.getElementById('contactsList');
+  if(users.length === 0) {
+    list.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No contacts found</p>';
+    return;
+  }
+  
+  list.innerHTML = users.map(user => {
+    const initials = user.username.substring(0, 2).toUpperCase();
+    return `
+      <button onclick="openChat(${user.id}, '${user.username}')" 
+              class="w-full text-left rounded-2xl p-3 bg-white border border-black/5 hover:bg-emerald-50 transition">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">${initials}</div>
+          <div class="flex-1">
+            <p class="font-semibold text-sm">${user.username}</p>
+            <p class="text-[12px] text-gray-600 truncate" id="preview-${user.id}">Start a conversation</p>
+          </div>
+        </div>
+      </button>
+    `;
+  }).join('');
 }
 
-async function addContactByUsername() {
-  const uname = document.getElementById('new-contact-username').value.trim();
-  if (!uname) return;
+function filterContacts() {
+  const search = document.getElementById('contactSearch').value.toLowerCase();
+  const filtered = allUsers.filter(u => 
+    u.id !== currentUser.id && u.username.toLowerCase().includes(search)
+  );
+  renderContacts(filtered);
+}
+
+async function openChat(userId, username) {
+  activeChat = {id: userId, username: username};
+  
+  const initials = username.substring(0, 2).toUpperCase();
+  document.getElementById('chatAvatar').textContent = initials;
+  document.getElementById('chatAvatar').className = 'h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold';
+  document.getElementById('chatName').textContent = username;
+  document.getElementById('chatName').className = 'font-semibold';
+  document.getElementById('chatStatus').textContent = 'Online';
+  document.getElementById('messageInput').disabled = false;
+  document.getElementById('sendButton').disabled = false;
+  
   try {
-    const res = await fetch(`${API_BASE}/user/${encodeURIComponent(uname)}`);
-    if (!res.ok) throw new Error('User not found');
-    const u = await res.json();
-    contacts[u.id] = { id: u.id, username: u.username };
-    renderContacts();
-    document.getElementById('new-contact-username').value = '';
-  } catch (e) { alert('Lookup failed. Add by numeric id instead.'); }
+    const res = await fetch(`${API_URL}/messages/${currentUser.id}/${userId}`);
+    const messages = await res.json();
+    
+    const container = document.getElementById('messagesContainer');
+    container.innerHTML = '';
+    messages.forEach(msg => displayMessage(msg));
+    container.scrollTop = container.scrollHeight;
+  } catch(err) {
+    console.error('Error loading messages:', err);
+  }
 }
 
-function openById() {
-  const id = document.getElementById('manual-id').value.trim();
-  if (!id) return alert('Enter numeric user id');
-  openChat(parseInt(id), `user #${id}`);
-}
-
-async function openChat(otherId, otherUsername) {
-  if (!me) return alert('Sign in first');
-  currentChat = { id: otherId, username: otherUsername || `user #${otherId}` };
-  document.getElementById('chat-with').textContent = currentChat.username || `user #${otherId}`;
-  document.getElementById('chat-with-id').textContent = `id: ${otherId}`;
-  document.getElementById('composer').style.display = 'flex';
-  document.getElementById('chat-body').innerHTML = '<div class="small muted-note">Loading...</div>';
-  contacts[otherId] = contacts[otherId] || { id: otherId, username: otherUsername || `user #${otherId}` };
-  renderContacts();
-  const resp = await fetch(`${API_BASE}/messages/${me.user_id}/${otherId}`);
-  const messages = await resp.json();
-  renderConversation(messages);
-}
-
-function renderConversation(messages) {
-  const body = document.getElementById('chat-body');
-  body.innerHTML = '';
-  if (!messages || messages.length === 0) { body.innerHTML = '<div class="small muted-note">No messages yet. Say hi!</div>'; return; }
-  messages.forEach(m => appendMessageToChat(m, false));
-  body.scrollTop = body.scrollHeight;
-}
-
-function appendMessageToChat(m, scroll = true) {
-  const body = document.getElementById('chat-body');
+function displayMessage(msg) {
+  const container = document.getElementById('messagesContainer');
+  const isOwn = msg.sender_id === currentUser.id;
+  
   const div = document.createElement('div');
-  div.className = 'message ' + ((parseInt(m.sender_id) === parseInt(me.user_id)) ? 'msg-self' : 'msg-other');
-  const who = (parseInt(m.sender_id) === parseInt(me.user_id)) ? 'You' : (contacts[m.sender_id]?.username || `user ${m.sender_id}`);
-  div.innerHTML = `<div style="font-weight:600">${escapeHtml(who)}</div>
-                   <div style="margin-top:6px;">${escapeHtml(m.content)}</div>
-                   <div class="meta">${new Date(m.timestamp).toLocaleString()}</div>`;
-  body.appendChild(div);
-  if (scroll) body.scrollTop = body.scrollHeight;
+  div.className = isOwn 
+    ? 'max-w-[85%] sm:max-w-md ml-auto bg-primary text-white rounded-2xl px-3 py-2 text-sm'
+    : 'max-w-[85%] sm:max-w-md bg-gray-100 rounded-2xl px-3 py-2 text-sm';
+  div.textContent = msg.content;
+  
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function updateContactPreview(senderId, content) {
+  const preview = document.getElementById(`preview-${senderId}`);
+  if(preview) {
+    preview.textContent = content.substring(0, 30) + (content.length > 30 ? '...' : '');
+  }
 }
 
 function sendMessage() {
-  if (!me || !currentChat) return alert('Select a contact and sign in first');
-  const input = document.getElementById('message-input');
-  const text = input.value.trim();
-  if (!text) return;
-  const payload = { sender_id: me.user_id, receiver_id: currentChat.id, content: text };
-  if (!socket || !socket.connected) return alert('Socket not connected.');
-  socket.emit('send_message', payload);
+  const input = document.getElementById('messageInput');
+  const content = input.value.trim();
+  if(!content || !activeChat) return;
+  
+  socket.emit('send_message', {
+    sender_id: currentUser.id,
+    receiver_id: activeChat.id,
+    content: content
+  });
+  
   input.value = '';
-  appendMessageToChat({ id: 'local-' + Date.now(), sender_id: me.user_id, receiver_id: currentChat.id, content: text, timestamp: new Date().toISOString() });
+  input.focus();
 }
 
-function escapeHtml(s='') { return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
-function escapeJsString(s='') { return s.replace(/'/g,"\\'").replace(/"/g,'\\"'); }
+document.getElementById('messageInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') sendMessage();
+});
+
+async function loadAllUsers() {
+  try {
+    const res = await fetch(`${API_URL}/users`);
+    allUsers = await res.json();
+  } catch(err) {
+    console.error('Error loading all users:', err);
+  }
+}
+
+function showNewChatModal() {
+  document.getElementById('newChatModal').classList.add('active');
+  searchAllUsers();
+}
+
+function closeNewChatModal() {
+  document.getElementById('newChatModal').classList.remove('active');
+}
+
+function searchAllUsers() {
+  const search = document.getElementById('newChatSearch').value.toLowerCase();
+  const filtered = allUsers.filter(u => 
+    u.id !== currentUser.id && u.username.toLowerCase().includes(search)
+  );
+  
+  const list = document.getElementById('allUsersList');
+  if(filtered.length === 0) {
+    list.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No users found</p>';
+    return;
+  }
+  
+  list.innerHTML = filtered.map(user => {
+    const initials = user.username.substring(0, 2).toUpperCase();
+    return `
+      <button onclick="startChatWithUser(${user.id}, '${user.username}')"
+              class="w-full text-left rounded-xl p-3 border border-black/5 hover:bg-emerald-50 transition flex items-center gap-3">
+        <div class="h-10 w-10 rounded-full bg-accent text-white flex items-center justify-center text-xs font-bold">${initials}</div>
+        <div>
+          <p class="font-semibold text-sm">${user.username}</p>
+          <p class="text-[11px] text-gray-500">Start conversation</p>
+        </div>
+      </button>
+    `;
+  }).join('');
+}
+
+function startChatWithUser(userId, username) {
+  closeNewChatModal();
+  openChat(userId, username);
+}
+
+function getAssistantReply(text){
+  const msg = (text||'').toLowerCase();
+  if(msg.includes('hi')||msg.includes('hello')||msg.includes('hey')){
+    return "Hi. I'm glad you reached out. What's on your mind right now?";
+  }
+  if(msg.includes('overwhelmed')||msg.includes('stressed')||msg.includes('anxious')){
+    return "Feeling overwhelmed is a real signal, not a weakness. Try slow breathing (in 4, hold 2, out 6). If it feels urgent or unsafe, call 988 and press 1.";
+  }
+  if(msg.includes('help')||msg.includes('support')){
+    return "You deserve support. A good next step is messaging a peer. If you need immediate help, call 988 (press 1).";
+  }
+  if(msg.includes('lonely')||msg.includes('alone')){
+    return "That feeling is common after service. A small step can help: send one message. You don't have to do this perfectly — just start.";
+  }
+  return "Thanks for sharing that. I'm a prototype, but you using this space to put words to it matters. If you ever feel unsafe, call 988 (press 1).";
+}
+
+function appendAssistant(sender, text, isUser){
+  const wrap = document.createElement('div');
+  wrap.className = isUser
+    ? 'bg-emerald-50 border border-emerald-100 rounded-2xl px-3 py-2 text-sm ml-auto max-w-[92%]'
+    : 'bg-gray-100 rounded-2xl px-3 py-2 text-sm max-w-[92%]';
+
+  const name = document.createElement('p');
+  name.className = 'text-[11px] font-semibold text-gray-700';
+  name.textContent = sender;
+
+  const body = document.createElement('p');
+  body.className = 'mt-1';
+  body.textContent = text;
+
+  wrap.appendChild(name);
+  wrap.appendChild(body);
+
+  const container = document.getElementById('assistantMsgs');
+  container.appendChild(wrap);
+  container.scrollTop = container.scrollHeight;
+}
+
+function sendToAssistant(){
+  const input = document.getElementById('assistantInput');
+  const text = (input.value||'').trim();
+  if(!text) return;
+
+  appendAssistant('You', text, true);
+
+  const container = document.getElementById('assistantMsgs');
+  const typing = document.createElement('div');
+  typing.className = 'bg-gray-100 rounded-2xl px-3 py-2 text-sm max-w-[92%] shimmer';
+  typing.innerHTML = "<p class='text-[11px] font-semibold text-gray-700'>Assistant</p><p class='mt-1'>Typing…</p>";
+  container.appendChild(typing);
+  container.scrollTop = container.scrollHeight;
+
+  setTimeout(()=>{
+    typing.remove();
+    appendAssistant('Assistant', getAssistantReply(text), false);
+  }, 650);
+
+  input.value='';
+  input.focus();
+}
+
+function toggleDrawer(){
+  document.getElementById('drawer').classList.toggle('hidden');
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('vetconnect_user');
+  if(saved) {
+    currentUser = JSON.parse(saved);
+    document.getElementById('authModal').classList.remove('active');
+    initApp();
+  }
+});
 </script>
+
 </body>
 </html>
