@@ -54,7 +54,7 @@ tailwind.config = {
       </svg>
       <span class="font-semibold">VetConnect</span>
     </div>
-    <a href="profile-integrated.html" class="p-2 rounded-xl border border-black/10 bg-white shadow-soft2">
+    <a href="profile.html" class="p-2 rounded-xl border border-black/10 bg-white shadow-soft2">
       <svg class="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4.4 0-8 2.1-8 4.7V21h16v-2.3c0-2.6-3.6-4.7-8-4.7Z" fill="currentColor"/></svg>
     </a>
   </div>
@@ -82,9 +82,9 @@ tailwind.config = {
     </div>
   </div>
   <nav class="space-y-2">
-    <a href="chats-integrated.html" class="block hover:bg-white/10 rounded-xl px-3 py-2.5 text-sm">💬 Chats</a>
-    <a href="community-integrated.html" class="block bg-white/10 rounded-xl px-3 py-2.5 text-sm">👥 Community</a>
-    <a href="profile-integrated.html" class="block hover:bg-white/10 rounded-xl px-3 py-2.5 text-sm">👤 Profile</a>
+    <a href="index.html" class="block hover:bg-white/10 rounded-xl px-3 py-2.5 text-sm">💬 Chats</a>
+    <a href="community.html" class="block bg-white/10 rounded-xl px-3 py-2.5 text-sm">👥 Community</a>
+    <a href="profile.html" class="block hover:bg-white/10 rounded-xl px-3 py-2.5 text-sm">👤 Profile</a>
   </nav>
 
   <div class="mt-auto rounded-2xl bg-white/10 p-4 text-[11px] leading-relaxed">
@@ -175,9 +175,9 @@ tailwind.config = {
 
 <nav class="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur border-t border-black/10">
   <div class="grid grid-cols-3 px-2 py-2 text-[11px]">
-    <a href="chats-integrated.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-gray-600">💬<span>Chats</span></a>
-    <a href="community-integrated.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-accent font-semibold">👥<span>Rooms</span></a>
-    <a href="profile-integrated.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-gray-600">👤<span>Me</span></a>
+    <a href="index.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-gray-600">💬<span>Chats</span></a>
+    <a href="community.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-accent font-semibold">👥<span>Rooms</span></a>
+    <a href="profile.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-gray-600">👤<span>Me</span></a>
   </div>
 </nav>
 
@@ -192,7 +192,7 @@ let allRooms = [];
 window.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('vetconnect_user');
   if (!saved) {
-    window.location.href = 'chats-integrated.html';
+    window.location.href = 'index.html';
     return;
   }
   currentUser = JSON.parse(saved);
