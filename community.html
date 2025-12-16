@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VetConnect — Community</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary: '#1f3d2b',
+        accent:  '#3a7f5a',
+        bg:      '#f6f1e9',
+        card:    '#ffffff',
+        ink:     '#102018'
+      },
+      boxShadow: {
+        soft: '0 14px 35px rgba(0,0,0,0.10)',
+        soft2:'0 10px 22px rgba(0,0,0,0.08)'
+      }
+    }
+  }
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  html,body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .fade-in{animation:fade .55s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .shimmer{background:linear-gradient(90deg,rgba(255,255,255,.25),rgba(255,255,255,.45),rgba(255,255,255,.25));
+           background-size:200% 100%; animation:shimmer 1.6s infinite}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+</style>
+
+</head>
+<body class="bg-bg text-ink">
+
+<header class="md:hidden sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-black/5">
+  <div class="px-4 py-3 flex items-center justify-between">
+    <button onclick="toggleDrawer()" class="p-2 rounded-xl border border-black/10 bg-white shadow-soft2">
+      <svg class="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none">
+        <path d="M4 5.5L12 3l8 2.5v6.2c0 4.1-2.6 7.8-8 9.3-5.4-1.5-8-5.2-8-9.3V5.5z" fill="currentColor"/>
+      </svg>
+      <span class="font-semibold">VetConnect</span>
+    </div>
+    <a href="profile-integrated.html" class="p-2 rounded-xl border border-black/10 bg-white shadow-soft2">
+      <svg class="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4.4 0-8 2.1-8 4.7V21h16v-2.3c0-2.6-3.6-4.7-8-4.7Z" fill="currentColor"/></svg>
+    </a>
+  </div>
+
+  <div id="drawer" class="hidden px-4 pb-4">
+    <div class="rounded-2xl border border-black/10 bg-white shadow-soft2 p-3 space-y-2 text-sm">
+      <a href="chats-integrated.html" class="block rounded-xl px-3 py-2 border hover:bg-gray-50">💬 Chats</a>
+      <a href="community-integrated.html" class="block rounded-xl px-3 py-2 border bg-emerald-50 border-emerald-100">👥 Community</a>
+      <a href="profile-integrated.html" class="block rounded-xl px-3 py-2 border hover:bg-gray-50">👤 Profile</a>
+      <a target="_blank" href="https://988lifeline.org/" class="block rounded-xl px-3 py-2 bg-primary text-white border-primary">☎️ Crisis: 988 (press 1)</a>
+    </div>
+  </div>
+</header>
+
+<div class="min-h-screen flex">
+
+<aside class="hidden md:flex w-72 bg-primary text-white flex-col p-5 gap-5">
+  <div class="flex items-center gap-2">
+    <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none">
+      <path d="M4 5.5L12 3l8 2.5v6.2c0 4.1-2.6 7.8-8 9.3-5.4-1.5-8-5.2-8-9.3V5.5z" fill="currentColor"/>
+    </svg>
+    <div>
+      <p class="font-semibold text-lg leading-tight">VetConnect</p>
+      <p class="text-[11px] text-emerald-100" id="currentUserDisplay">Peer support • community</p>
+    </div>
+  </div>
+  <nav class="space-y-2">
+    <a href="chats-integrated.html" class="block hover:bg-white/10 rounded-xl px-3 py-2.5 text-sm">💬 Chats</a>
+    <a href="community-integrated.html" class="block bg-white/10 rounded-xl px-3 py-2.5 text-sm">👥 Community</a>
+    <a href="profile-integrated.html" class="block hover:bg-white/10 rounded-xl px-3 py-2.5 text-sm">👤 Profile</a>
+  </nav>
+
+  <div class="mt-auto rounded-2xl bg-white/10 p-4 text-[11px] leading-relaxed">
+    <p class="font-semibold text-xs">Need immediate help?</p>
+    <p class="mt-1 text-emerald-50/90">
+      If you're in crisis, call <span class="font-semibold">988</span> (then press 1).
+    </p>
+    <a class="mt-3 block rounded-xl bg-emerald-300 text-primary text-center py-2 font-semibold"
+       target="_blank" href="https://988lifeline.org/">
+      Visit 988 Website
+    </a>
+  </div>
+</aside>
+
+<main class="flex-1 px-4 md:px-8 py-6 md:py-10 fade-in pb-24 md:pb-10">
+  <div class="max-w-6xl mx-auto">
+    
+<div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+  <div>
+    <h1 class="text-2xl md:text-3xl font-bold text-primary">Community Rooms</h1>
+    <p class="text-sm text-gray-700">Join a topic circle. Moderated, calm, and supportive.</p>
+  </div>
+</div>
+
+<div class="mt-5 grid lg:grid-cols-3 gap-4">
+  <section class="bg-white border border-black/5 shadow-soft rounded-3xl p-4 lg:col-span-1">
+    <div class="flex items-center justify-between">
+      <h2 class="font-semibold text-primary">Rooms</h2>
+      <span id="liveCount" class="text-[11px] px-2 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-800 font-semibold">Loading...</span>
+    </div>
+    <input id="roomSearch" class="mt-3 w-full px-3 py-2 rounded-xl border border-gray-200 text-sm" placeholder="Search rooms…" oninput="filterRooms()"/>
+    <div id="roomsList" class="mt-4 space-y-2">
+      <p class="text-sm text-gray-500 text-center py-4">Loading rooms...</p>
+    </div>
+  </section>
+
+  <section class="space-y-4 lg:col-span-2">
+    <div id="activeRoomView" class="bg-white border border-black/5 shadow-soft rounded-3xl p-5 hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div>
+          <h3 id="roomTitle" class="text-lg font-bold text-primary"></h3>
+          <p id="roomDescription" class="text-sm text-gray-700 mt-1"></p>
+        </div>
+        <button id="leaveRoomBtn" onclick="leaveCurrentRoom()" class="px-4 py-2 rounded-xl bg-gray-100 border border-black/10 text-sm font-semibold hover:bg-gray-200">
+          Leave Room
+        </button>
+      </div>
+
+      <div id="roomMessages" class="space-y-3 max-h-96 overflow-y-auto mb-4 p-4 bg-gray-50 rounded-2xl">
+        <p class="text-center text-gray-500 text-sm">Loading messages...</p>
+      </div>
+
+      <div class="flex gap-2">
+        <input id="roomMessageInput" class="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm" 
+               placeholder="Type a message…" 
+               onkeydown="if(event.key==='Enter'){sendRoomMessage();}"/>
+        <button onclick="sendRoomMessage()" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-accent">
+          Send
+        </button>
+      </div>
+    </div>
+
+    <div id="roomPlaceholder" class="bg-white border border-black/5 shadow-soft rounded-3xl p-8 text-center">
+      <div class="max-w-md mx-auto">
+        <div class="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-emerald-700" viewBox="0 0 24 24" fill="none">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-primary mb-2">Welcome to Community Rooms</h3>
+        <p class="text-sm text-gray-700 mb-4">Select a room from the list to join the conversation. All rooms are moderated and provide a safe space for peer support.</p>
+        <div class="rounded-2xl bg-primary/10 p-4 text-left">
+          <p class="font-semibold text-primary text-sm">Room Guidelines:</p>
+          <ul class="text-xs text-gray-700 mt-2 space-y-1">
+            <li>• Respect first — no harassment</li>
+            <li>• Advice is optional — listening is enough</li>
+            <li>• If someone is in danger, escalate to 988</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+  </div>
+</main>
+</div>
+
+<nav class="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur border-t border-black/10">
+  <div class="grid grid-cols-3 px-2 py-2 text-[11px]">
+    <a href="chats-integrated.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-gray-600">💬<span>Chats</span></a>
+    <a href="community-integrated.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-accent font-semibold">👥<span>Rooms</span></a>
+    <a href="profile-integrated.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-gray-600">👤<span>Me</span></a>
+  </div>
+</nav>
+
+<script>
+const API_URL = 'https://chat.monty.my';
+let socket;
+let currentUser = null;
+let activeRoom = null;
+let allRooms = [];
+
+// Check auth
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('vetconnect_user');
+  if (!saved) {
+    window.location.href = 'chats-integrated.html';
+    return;
+  }
+  currentUser = JSON.parse(saved);
+  document.getElementById('currentUserDisplay').textContent = `Logged in as ${currentUser.username}`;
+  initApp();
+});
+
+function initApp() {
+  socket = io(API_URL);
+  socket.on('connect', () => {
+    socket.emit('register_user', currentUser.id);
+    loadRooms();
+  });
+  
+  socket.on('new_room_message', (msg) => {
+    if (activeRoom && msg.room_id === activeRoom.id) {
+      displayRoomMessage(msg);
+    }
+  });
+  
+  socket.on('user_joined', ({ user_id }) => {
+    console.log('User joined:', user_id);
+  });
+  
+  socket.on('user_typing', ({ username }) => {
+    showTypingIndicator(username);
+  });
+}
+
+async function loadRooms() {
+  try {
+    const res = await fetch(`${API_URL}/rooms`);
+    allRooms = await res.json();
+    renderRooms(allRooms);
+    document.getElementById('liveCount').textContent = `${allRooms.length} active`;
+  } catch(err) {
+    console.error('Error loading rooms:', err);
+  }
+}
+
+function renderRooms(rooms) {
+  const list = document.getElementById('roomsList');
+  if (rooms.length === 0) {
+    list.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No rooms found</p>';
+    return;
+  }
+  
+  list.innerHTML = rooms.map(room => `
+    <button onclick="joinRoom(${room.id})" 
+            class="w-full text-left rounded-2xl p-3 ${activeRoom?.id === room.id ? 'bg-emerald-50 border border-emerald-100' : 'bg-white border border-black/5 hover:bg-gray-50'} transition">
+      <div class="flex items-center justify-between">
+        <p class="font-semibold text-sm text-primary">${room.name}</p>
+        <span class="text-[11px] text-gray-600 font-semibold">${room.member_count} active</span>
+      </div>
+      <p class="text-[12px] text-gray-600 mt-1">${room.description}</p>
+    </button>
+  `).join('');
+}
+
+function filterRooms() {
+  const search = document.getElementById('roomSearch').value.toLowerCase();
+  const filtered = allRooms.filter(r => 
+    r.name.toLowerCase().includes(search) || 
+    r.description.toLowerCase().includes(search)
+  );
+  renderRooms(filtered);
+}
+
+async function joinRoom(roomId) {
+  try {
+    // Join room membership
+    await fetch(`${API_URL}/room/${roomId}/join`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ user_id: currentUser.id })
+    });
+    
+    // Get room details
+    const roomRes = await fetch(`${API_URL}/room/${roomId}`);
+    activeRoom = await roomRes.json();
+    
+    // Join socket room
+    socket.emit('join_room', { room_id: roomId, user_id: currentUser.id });
+    
+    // Load messages
+    const msgRes = await fetch(`${API_URL}/room/${roomId}/messages`);
+    const messages = await msgRes.json();
+    
+    // Update UI
+    document.getElementById('roomPlaceholder').classList.add('hidden');
+    document.getElementById('activeRoomView').classList.remove('hidden');
+    document.getElementById('roomTitle').textContent = activeRoom.name;
+    document.getElementById('roomDescription').textContent = activeRoom.description;
+    
+    const msgContainer = document.getElementById('roomMessages');
+    msgContainer.innerHTML = '';
+    messages.forEach(msg => displayRoomMessage(msg));
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+    
+    renderRooms(allRooms);
+  } catch(err) {
+    console.error('Error joining room:', err);
+  }
+}
+
+function displayRoomMessage(msg) {
+  const container = document.getElementById('roomMessages');
+  const isOwn = msg.user_id === currentUser.id;
+  
+  const div = document.createElement('div');
+  div.className = 'flex items-start gap-2';
+  
+  if (!isOwn) {
+    const initials = msg.username.substring(0, 2).toUpperCase();
+    const avatar = document.createElement('div');
+    avatar.className = 'h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0';
+    avatar.style.backgroundColor = msg.avatar_color || '#1f3d2b';
+    avatar.textContent = initials;
+    div.appendChild(avatar);
+  }
+  
+  const msgDiv = document.createElement('div');
+  msgDiv.className = isOwn 
+    ? 'ml-auto bg-primary text-white rounded-2xl px-3 py-2 text-sm max-w-[70%]'
+    : 'bg-white border border-black/5 rounded-2xl px-3 py-2 text-sm max-w-[70%]';
+  
+  if (!isOwn) {
+    const name = document.createElement('p');
+    name.className = 'text-[11px] font-semibold mb-1';
+    name.textContent = msg.username;
+    msgDiv.appendChild(name);
+  }
+  
+  const content = document.createElement('p');
+  content.textContent = msg.content;
+  msgDiv.appendChild(content);
+  
+  div.appendChild(msgDiv);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function sendRoomMessage() {
+  const input = document.getElementById('roomMessageInput');
+  const content = input.value.trim();
+  if (!content || !activeRoom) return;
+  
+  socket.emit('send_room_message', {
+    room_id: activeRoom.id,
+    user_id: currentUser.id,
+    username: currentUser.username,
+    content: content
+  });
+  
+  input.value = '';
+  input.focus();
+}
+
+async function leaveCurrentRoom() {
+  if (!activeRoom) return;
+  
+  try {
+    await fetch(`${API_URL}/room/${activeRoom.id}/leave`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ user_id: currentUser.id })
+    });
+    
+    socket.emit('leave_room', { room_id: activeRoom.id, user_id: currentUser.id });
+    
+    activeRoom = null;
+    document.getElementById('activeRoomView').classList.add('hidden');
+    document.getElementById('roomPlaceholder').classList.remove('hidden');
+    
+    loadRooms();
+  } catch(err) {
+    console.error('Error leaving room:', err);
+  }
+}
+
+function showTypingIndicator(username) {
+  // Implement typing indicator if desired
+}
+
+function toggleDrawer(){
+  document.getElementById('drawer').classList.toggle('hidden');
+}
+</script>
+
+</body>
+</html>
