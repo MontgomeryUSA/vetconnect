@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VetConnect — Profile</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary: '#1f3d2b',
+        accent:  '#3a7f5a',
+        bg:      '#f6f1e9',
+        card:    '#ffffff',
+        ink:     '#102018'
+      },
+      boxShadow: {
+        soft: '0 14px 35px rgba(0,0,0,0.10)',
+        soft2:'0 10px 22px rgba(0,0,0,0.08)'
+      }
+    }
+  }
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  html,body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .fade-in{animation:fade .55s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:50;align-items:center;justify-content:center}
+  .modal.active{display:flex}
+</style>
+
+</head>
+<body class="bg-bg text-ink">
+
+<header class="md:hidden sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-black/5">
+  <div class="px-4 py-3 flex items-center justify-between">
+    <button onclick="toggleDrawer()" class="p-2 rounded-xl border border-black/10 bg-white shadow-soft2">
+      <svg class="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none">
+        <path d="M4 5.5L12 3l8 2.5v6.2c0 4.1-2.6 7.8-8 9.3-5.4-1.5-8-5.2-8-9.3V5.5z" fill="currentColor"/>
+      </svg>
+      <span class="font-semibold">VetConnect</span>
+    </div>
+    <button onclick="logout()" class="p-2 rounded-xl border border-black/10 bg-white shadow-soft2">
+      <span class="text-xs">Logout</span>
+    </button>
+  </div>
+
+  <div id="drawer" class="hidden px-4 pb-4">
+    <div class="rounded-2xl border border-black/10 bg-white shadow-soft2 p-3 space-y-2 text-sm">
+      <a href="chats-integrated.html" class="block rounded-xl px-3 py-2 border hover:bg-gray-50">💬 Chats</a>
+      <a href="community-integrated.html" class="block rounded-xl px-3 py-2 border hover:bg-gray-50">👥 Community</a>
+      <a href="profile-integrated.html" class="block rounded-xl px-3 py-2 border bg-emerald-50 border-emerald-100">👤 Profile</a>
+      <a target="_blank" href="https://988lifeline.org/" class="block rounded-xl px-3 py-2 bg-primary text-white border-primary">☎️ Crisis: 988 (press 1)</a>
+    </div>
+  </div>
+</header>
+
+<div class="min-h-screen flex">
+
+<aside class="hidden md:flex w-72 bg-primary text-white flex-col p-5 gap-5">
+  <div class="flex items-center gap-2">
+    <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none">
+      <path d="M4 5.5L12 3l8 2.5v6.2c0 4.1-2.6 7.8-8 9.3-5.4-1.5-8-5.2-8-9.3V5.5z" fill="currentColor"/>
+    </svg>
+    <div>
+      <p class="font-semibold text-lg leading-tight">VetConnect</p>
+      <p class="text-[11px] text-emerald-100">Peer support • community</p>
+    </div>
+  </div>
+  <nav class="space-y-2">
+    <a href="chats-integrated.html" class="block hover:bg-white/10 rounded-xl px-3 py-2.5 text-sm">💬 Chats</a>
+    <a href="community-integrated.html" class="block hover:bg-white/10 rounded-xl px-3 py-2.5 text-sm">👥 Community</a>
+    <a href="profile-integrated.html" class="block bg-white/10 rounded-xl px-3 py-2.5 text-sm">👤 Profile</a>
+  </nav>
+
+  <button onclick="logout()" class="mt-auto w-full px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold">
+    Logout
+  </button>
+
+  <div class="rounded-2xl bg-white/10 p-4 text-[11px] leading-relaxed">
+    <p class="font-semibold text-xs">Need immediate help?</p>
+    <p class="mt-1 text-emerald-50/90">
+      If you're in crisis, call <span class="font-semibold">988</span> (then press 1).
+    </p>
+    <a class="mt-3 block rounded-xl bg-emerald-300 text-primary text-center py-2 font-semibold"
+       target="_blank" href="https://988lifeline.org/">
+      Visit 988 Website
+    </a>
+  </div>
+</aside>
+
+<main class="flex-1 px-4 md:px-8 py-6 md:py-10 fade-in pb-24 md:pb-10">
+  <div class="max-w-6xl mx-auto">
+    
+<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+  <div class="flex items-center gap-4">
+    <div id="userAvatar" class="h-16 w-16 rounded-full text-white flex items-center justify-center text-lg font-bold shadow-soft2">
+    </div>
+    <div>
+      <h1 id="userName" class="text-2xl font-bold text-primary">Loading...</h1>
+      <p id="userBranch" class="text-sm text-gray-700">—</p>
+      <p id="userMemberSince" class="text-xs text-gray-500 mt-1">—</p>
+    </div>
+  </div>
+  <div class="flex gap-2">
+    <button onclick="showEditModal()" class="px-4 py-2 rounded-xl bg-white border border-black/10 shadow-soft2 text-sm font-semibold hover:bg-gray-50">Edit profile</button>
+    <button onclick="logout()" class="px-4 py-2 rounded-xl bg-primary text-white shadow-soft2 text-sm font-semibold hover:bg-accent">Logout</button>
+  </div>
+</div>
+
+<section class="mt-5 grid lg:grid-cols-3 gap-4">
+  <div class="bg-white border border-black/5 shadow-soft rounded-3xl p-5">
+    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Stats</p>
+    <div class="mt-4 grid grid-cols-3 gap-3 text-center">
+      <div class="rounded-2xl bg-gray-50 border border-gray-200 p-3">
+        <p id="statConnections" class="text-xl font-bold text-primary">0</p>
+        <p class="text-[11px] text-gray-600">Connections</p>
+      </div>
+      <div class="rounded-2xl bg-gray-50 border border-gray-200 p-3">
+        <p id="statRooms" class="text-xl font-bold text-primary">0</p>
+        <p class="text-[11px] text-gray-600">Rooms</p>
+      </div>
+      <div class="rounded-2xl bg-gray-50 border border-gray-200 p-3">
+        <p id="statDays" class="text-xl font-bold text-primary">0</p>
+        <p class="text-[11px] text-gray-600">Days active</p>
+      </div>
+    </div>
+
+    <p class="mt-5 font-semibold text-primary">About</p>
+    <p id="userBio" class="mt-2 text-sm text-gray-700">No bio yet. Click "Edit profile" to add one.</p>
+  </div>
+
+  <div class="bg-white border border-black/5 shadow-soft rounded-3xl p-5 lg:col-span-2">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Activity</p>
+        <h2 class="mt-1 font-bold text-primary text-lg">Your VetConnect Journey</h2>
+      </div>
+    </div>
+
+    <div class="mt-5 grid md:grid-cols-3 gap-3 text-sm">
+      <div class="rounded-2xl border border-black/5 p-4 bg-gradient-to-r from-white to-emerald-50">
+        <p class="font-semibold text-primary">Welcome!</p>
+        <p class="text-[12px] text-gray-600 mt-1">You're part of a supportive community of veterans helping each other.</p>
+      </div>
+      <div class="rounded-2xl border border-black/5 p-4 bg-gradient-to-r from-white to-sky-50">
+        <p class="font-semibold text-primary">Get started</p>
+        <p class="text-[12px] text-gray-600 mt-1">Join a room or send a message to start connecting.</p>
+      </div>
+      <div class="rounded-2xl border border-black/5 p-4 bg-gradient-to-r from-white to-amber-50">
+        <p class="font-semibold text-primary">Stay safe</p>
+        <p class="text-[12px] text-gray-600 mt-1">988 (press 1) is always available for crisis support.</p>
+      </div>
+    </div>
+
+    <div class="mt-5 rounded-2xl bg-primary/10 p-4">
+      <p class="font-semibold text-primary">Your privacy matters</p>
+      <p class="text-sm text-gray-700 mt-2">Your conversations are private. Only you and the people you chat with can see your messages. Room messages are visible to room members only.</p>
+    </div>
+  </div>
+</section>
+
+<section class="mt-4 grid md:grid-cols-3 gap-4">
+  <div class="bg-white border border-black/5 shadow-soft2 rounded-3xl p-5">
+    <p class="font-semibold text-primary">Account & privacy</p>
+    <ul class="mt-3 text-sm text-gray-700 space-y-2">
+      <li>• Your data is stored securely</li>
+      <li>• You control your profile visibility</li>
+      <li>• Report tools available in all rooms</li>
+    </ul>
+  </div>
+  <div class="bg-white border border-black/5 shadow-soft2 rounded-3xl p-5">
+    <p class="font-semibold text-primary">Safety tools</p>
+    <ul class="mt-3 text-sm text-gray-700 space-y-2">
+      <li>• Report harmful behavior</li>
+      <li>• Block users if needed</li>
+      <li>• Quick 988 link always available</li>
+    </ul>
+  </div>
+  <div class="bg-white border border-black/5 shadow-soft2 rounded-3xl p-5">
+    <p class="font-semibold text-primary">Quick actions</p>
+    <div class="mt-3 space-y-2">
+      <a href="community-integrated.html" class="block text-sm px-4 py-2 rounded-xl bg-primary text-white font-semibold hover:bg-accent text-center">Browse rooms</a>
+      <a href="chats-integrated.html" class="block text-sm px-4 py-2 rounded-xl bg-white border border-black/10 font-semibold hover:bg-gray-50 text-center">Message a peer</a>
+      <a target="_blank" href="https://988lifeline.org/" class="block text-sm px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 font-semibold hover:bg-white text-center">988 resources</a>
+    </div>
+  </div>
+</section>
+
+  </div>
+</main>
+</div>
+
+<!-- Edit Profile Modal -->
+<div id="editModal" class="modal">
+  <div class="bg-white rounded-3xl shadow-soft p-6 max-w-md w-full mx-4">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-xl font-bold text-primary">Edit Profile</h3>
+      <button onclick="closeEditModal()" class="p-2 hover:bg-gray-100 rounded-xl">✕</button>
+    </div>
+    
+    <form id="editForm" onsubmit="saveProfile(event)">
+      <label class="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
+      <input type="text" id="editFullName" class="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm mb-3"/>
+      
+      <label class="block text-sm font-semibold text-gray-700 mb-1">Branch</label>
+      <input type="text" id="editBranch" class="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm mb-3"/>
+      
+      <label class="block text-sm font-semibold text-gray-700 mb-1">Bio</label>
+      <textarea id="editBio" rows="3" class="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm mb-3"></textarea>
+      
+      <button type="submit" class="w-full px-4 py-3 rounded-xl bg-primary text-white font-semibold hover:bg-accent">
+        Save Changes
+      </button>
+    </form>
+  </div>
+</div>
+
+<nav class="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur border-t border-black/10">
+  <div class="grid grid-cols-3 px-2 py-2 text-[11px]">
+    <a href="chats-integrated.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-gray-600">💬<span>Chats</span></a>
+    <a href="community-integrated.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-gray-600">👥<span>Rooms</span></a>
+    <a href="profile-integrated.html" class="flex flex-col items-center gap-1 py-1 rounded-xl text-accent font-semibold">👤<span>Me</span></a>
+  </div>
+</nav>
+
+<script>
+const API_URL = 'https://chat.monty.my';
+let currentUser = null;
+let userData = null;
+
+// Check auth
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('vetconnect_user');
+  if (!saved) {
+    window.location.href = 'chats-integrated.html';
+    return;
+  }
+  currentUser = JSON.parse(saved);
+  loadUserProfile();
+});
+
+async function loadUserProfile() {
+  try {
+    // Get user details
+    const userRes = await fetch(`${API_URL}/user-by-id/${currentUser.id}`);
+    userData = await userRes.json();
+    
+    // Get user stats
+    const statsRes = await fetch(`${API_URL}/user/${currentUser.id}/stats`);
+    const stats = await statsRes.json();
+    
+    // Update UI
+    const initials = userData.username.substring(0, 2).toUpperCase();
+    const avatar = document.getElementById('userAvatar');
+    avatar.textContent = initials;
+    avatar.style.backgroundColor = userData.avatar_color || '#1f3d2b';
+    
+    document.getElementById('userName').textContent = userData.full_name || userData.username;
+    document.getElementById('userBranch').textContent = `${userData.branch} • @${userData.username}`;
+    document.getElementById('userMemberSince').textContent = `Member since ${formatDate(userData.member_since)}`;
+    document.getElementById('userBio').textContent = userData.bio || 'No bio yet. Click "Edit profile" to add one.';
+    
+    document.getElementById('statConnections').textContent = stats.connections;
+    document.getElementById('statRooms').textContent = stats.rooms;
+    document.getElementById('statDays').textContent = stats.days_active;
+    
+  } catch(err) {
+    console.error('Error loading profile:', err);
+  }
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return 'Recently';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+function showEditModal() {
+  document.getElementById('editFullName').value = userData.full_name || '';
+  document.getElementById('editBranch').value = userData.branch || '';
+  document.getElementById('editBio').value = userData.bio || '';
+  document.getElementById('editModal').classList.add('active');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('active');
+}
+
+async function saveProfile(e) {
+  e.preventDefault();
+  
+  const full_name = document.getElementById('editFullName').value;
+  const branch = document.getElementById('editBranch').value;
+  const bio = document.getElementById('editBio').value;
+  
+  try {
+    const res = await fetch(`${API_URL}/user/${currentUser.id}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ full_name, branch, bio })
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+      closeEditModal();
+      loadUserProfile();
+    }
+  } catch(err) {
+    console.error('Error saving profile:', err);
+    alert('Failed to save profile');
+  }
+}
+
+function logout() {
+  localStorage.removeItem('vetconnect_user');
+  window.location.href = 'chats-integrated.html';
+}
+
+function toggleDrawer(){
+  document.getElementById('drawer').classList.toggle('hidden');
+}
+</script>
+
+</body>
+</html>
